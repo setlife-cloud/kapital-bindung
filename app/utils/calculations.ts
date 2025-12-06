@@ -57,6 +57,16 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
     const dailyRevenue = annualRevenue / 360;
     const workingCapitalDays = dailyRevenue > 0 ? workingCapital / dailyRevenue : 0;
 
+    // --- New KPIs (User Request 8) ---
+    // Cash-to-Cash Cycle = Inventory Days + Receivables Days - Payables Days
+    const cashToCashCycle = inventoryDays + receivablesDays - payablesDays;
+
+    // Receivables Turnover = Revenue / Receivables (or 360 / Days)
+    const receivablesTurnover = receivables > 0 ? annualRevenue / receivables : 0;
+    // Payables Turnover = COGS / Payables (or 360 / Days)
+    const payablesTurnover = payables > 0 ? cogs / payables : 0;
+
+
     // --- Risk & Logic Adjustments for "Low Stock" ---
     // User Requirement: 
     // - Clear negative effects of low stock (Costs, Flexibility)
@@ -100,6 +110,9 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
         inventoryDays,
         roi,
         workingCapitalDays,
+        cashToCashCycle,
+        receivablesTurnover,
+        payablesTurnover,
         riskLabel,
         riskMessage
     };
@@ -138,5 +151,54 @@ export const getKPIColor = {
         if (val > 60) return 'neutral';
         if (val >= 0) return 'good';
         return 'alert';
+    },
+    // New KPIs Colors
+    cashToCashCycle: (val: number): KPIStatus => {
+        if (val < 0) return 'good'; // Negative is usually good (supplier financed)
+        if (val < 45) return 'good';
+        if (val < 90) return 'neutral';
+        return 'critical';
     }
 };
+
+export const INDUSTRY_PRESETS: { label: string; description: string; inputs: SimulatorInputs }[] = [
+    {
+        label: "Handelsbetrieb",
+        description: "Hoher Warenumschlag, geringe Anlagen, schlanke Struktur.",
+        inputs: {
+            annualRevenue: 10000000, // Higher volume
+            cogsPercentage: 75, // Lower margin trade
+            inventoryValue: 800000, // Fast turnover (~9.3)
+            receivablesDays: 20, // B2C/B2B Mix
+            payablesDays: 45, // Power over suppliers
+            fixedAssets: 500000, // Warehouse/IT
+            profitMargin: 3, // Thin margin
+        }
+    },
+    {
+        label: "Serienfertiger",
+        description: "Skaleneffekte, hohe Anlagenintensität, aber effizient.",
+        inputs: {
+            annualRevenue: 25000000, // High Volume (Scale)
+            cogsPercentage: 60,
+            inventoryValue: 3000000, // Turnover ~5 (Buffer)
+            receivablesDays: 30, // Standard
+            payablesDays: 30,
+            fixedAssets: 8000000, // Heavy Machinery
+            profitMargin: 9, // Efficiency gains -> Good Profit
+        }
+    },
+    {
+        label: "Projektfertiger",
+        description: "Hohe Komplexität, lange Bindung in unfertigen Erzeugnissen (WIP).",
+        inputs: {
+            annualRevenue: 8000000, // Lower volume (Custom)
+            cogsPercentage: 55,
+            inventoryValue: 3500000, // Very High WIP -> low turnover
+            receivablesDays: 60, // Milestone payments slow
+            payablesDays: 20, // Suppliers want fast pay
+            fixedAssets: 2000000, // Workshop/Engineering
+            profitMargin: 11, // Higher margin, but eaten by capital cost
+        }
+    }
+];

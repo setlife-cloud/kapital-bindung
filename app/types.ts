@@ -24,6 +24,9 @@ export interface SimulatorResults {
     inventoryDays: number; // Lagerdauer
     roi: number; // Return on Investment
     workingCapitalDays: number; // Working Capital in Tagen
+    cashToCashCycle: number; // Cash-to-Cash Cycle
+    receivablesTurnover: number; // Debitorenumschlag
+    payablesTurnover: number; // Kreditorenumschlag
     riskLabel?: 'low' | 'medium' | 'high';
     riskMessage?: string;
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { DEFAULT_INPUTS, calculateResults, getKPIColor } from "./utils/calculations";
+import { DEFAULT_INPUTS, calculateResults, getKPIColor, INDUSTRY_PRESETS } from "./utils/calculations";
 import { SimulatorInputs } from "./types";
 import { SliderInput } from "./components/SliderInput";
 import { KPICard } from "./components/KPICard";
-import { LayoutDashboard, TrendingUp, DollarSign, Package, Clock, BarChart3, Info } from "lucide-react";
+import { LayoutDashboard, TrendingUp, DollarSign, Package, Clock, BarChart3, Info, PieChart } from "lucide-react";
 import { cn } from "./utils/cn";
 
 const CURRENCY_FORMAT = new Intl.NumberFormat('de-DE', {
@@ -148,30 +148,12 @@ export default function Simulator() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-brand-600 text-white p-2 rounded-lg">
-              <LayoutDashboard size={24} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 leading-none">Kapitalbindung-Simulator</h1>
-              <p className="text-xs text-slate-500 mt-1">Interaktives Modell für Lehrzwecke</p>
-            </div>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-            <Info size={16} />
-            <span>Verändere die Parameter links, um die Auswirkungen zu sehen.</span>
-          </div>
-        </div>
-      </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
           {/* LEFT COLUMN: INPUTS */}
-          <div className="lg:col-span-4 space-y-8">
+          <div className="lg:col-span-4 space-y-4">
 
             {/* Group 1: Umsatz & Marge */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
@@ -184,7 +166,7 @@ export default function Simulator() {
                   label="Jahresumsatz"
                   value={inputs.annualRevenue}
                   onChange={(v) => updateInput('annualRevenue', v)}
-                  min={500000} max={10000000} step={100000}
+                  min={500000} max={30000000} step={100000}
                   formatValue={formatCurrency}
                   description="Gesamter Erlös aus Verkäufen pro Jahr."
                 />
@@ -216,7 +198,7 @@ export default function Simulator() {
                   label="Lagerbestand (Ø)"
                   value={inputs.inventoryValue}
                   onChange={(v) => updateInput('inventoryValue', v)}
-                  min={0} max={2000000} step={50000}
+                  min={0} max={5000000} step={50000}
                   formatValue={formatCurrency}
                   description="Durchschnittlich gebundenes Kapital im Lager."
                 />
@@ -248,7 +230,7 @@ export default function Simulator() {
                   label="Anlagevermögen"
                   value={inputs.fixedAssets}
                   onChange={(v) => updateInput('fixedAssets', v)}
-                  min={500000} max={8000000} step={100000}
+                  min={500000} max={10000000} step={100000}
                   formatValue={formatCurrency}
                   description="Maschinen, Gebäude, Ausstattung."
                 />
@@ -313,94 +295,141 @@ export default function Simulator() {
                   description="Return on Invest"
                 />
               </div>
-            </div>
 
-            {/* Section 2: Kapitalstruktur Breakdown */}
-            <div>
+
+              {/* Section 2: Kapitalstruktur Breakdown (Total Funding View) */}
               <h3 className="text-sm uppercase tracking-wider text-slate-500 font-bold mb-4 mt-8 flex items-center gap-2">
-                <DollarSign size={16} /> Kapitalstruktur
+                <PieChart size={16} /> Kapitalstruktur (Finanzierung)
               </h3>
 
-              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-                  <div className="text-center pt-4 md:pt-0">
-                    <div className="text-slate-500 text-sm mb-1 uppercase font-semibold">Umlaufvermögen</div>
-                    <div className="text-2xl font-bold text-slate-900">{formatCurrency(results.currentAssets)}</div>
-                    <div className="text-xs text-slate-400 mt-1">Lager + Forderungen</div>
-                  </div>
-                  <div className="text-center pt-4 md:pt-0">
-                    <div className="text-slate-500 text-sm mb-1 uppercase font-semibold">Working Capital</div>
-                    <div className={cn("text-2xl font-bold", results.workingCapital < 0 ? "text-red-600" : "text-brand-600")}>
-                      {formatCurrency(results.workingCapital)}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                {(() => {
+                  // Gross Assets = The total "stuff" we have (Fixed + Inventory + Receivables)
+                  const grossAssets = inputs.fixedAssets + results.currentAssets;
+                  // Funding Sources:
+                  // 1. Payables (Supplier Credit) -> "Free" (No Interest/Equity needed)
+                  // 2. Net Capital Required (Total Capital) -> "Bound" (Needs Equity/Debt)
+
+                  const freePct = (results.payables / grossAssets) * 100;
+                  const boundPct = (results.totalCapital / grossAssets) * 100;
+
+                  // Inside Bound, distinguish Fixed vs Net WC for context
+                  // If WC > 0: Bound = Fixed + NetWC
+                  // If WC < 0: Bound = Fixed - Released, so Bound is purely Fixed (and smaller than Fixed)
+
+                  const isWCPositive = results.workingCapital > 0;
+                  const fixedInBoundPct = isWCPositive
+                    ? (inputs.fixedAssets / grossAssets) * 100
+                    : boundPct; // If WC < 0, Bound is entirely Fixed (and less than original Fixed)
+
+                  const wcInBoundPct = isWCPositive
+                    ? (results.workingCapital / grossAssets) * 100
+                    : 0;
+
+                  return (
+                    <div className="flex h-12 w-full rounded-lg overflow-hidden mb-2 bg-slate-200 relative">
+                      {/* Segment 1: Fixed Assets (Bound) */}
+                      <div
+                        className="bg-blue-600 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
+                        style={{ width: `${fixedInBoundPct}%` }}
+                      >
+                        {fixedInBoundPct > 15 && 'Anlagevermögen'}
+                      </div>
+
+                      {/* Segment 2: Net WC (Bound) - Only if WC Positive */}
+                      {isWCPositive && (
+                        <div
+                          className="bg-amber-500 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
+                          style={{ width: `${wcInBoundPct}%` }}
+                        >
+                          {wcInBoundPct > 15 && 'Umlaufvermögen'}
+                        </div>
+                      )}
+
+                      {/* Segment 3: Payables (Free) */}
+                      <div
+                        className="bg-emerald-500 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
+                        style={{ width: `${freePct}%` }}
+                      >
+                        {freePct > 5 && 'Cash'}
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {results.workingCapitalDays.toFixed(0)} Tage Umsatz
-                    </div>
+                  );
+                })()}
+
+                <div className="flex justify-between text-xs text-slate-500 font-medium px-1 mt-2">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-700">Gebunden: {formatCurrency(results.totalCapital)}</span>
+                    <span className="text-[10px] opacity-75">Finanziert durch Bank/Eigenkapital</span>
                   </div>
-                  <div className="text-center pt-4 md:pt-0">
-                    <div className="text-slate-500 text-sm mb-1 uppercase font-semibold">Gebundenes Kapital (Total)</div>
-                    <div className="text-2xl font-bold text-slate-900">{formatCurrency(results.totalCapital)}</div>
-                    <div className="text-xs text-slate-400 mt-1">Anlage + Working Capital</div>
+                  <div className="flex flex-col items-end">
+                    <span className="font-bold text-emerald-600">Frei: {formatCurrency(results.payables)}</span>
+                    <span className="text-[10px] opacity-75">Finanziert durch Lieferanten</span>
                   </div>
                 </div>
-
-
-
-                {/* Simple Bar Visualization */}
-                <div className="mt-8 pt-8 border-t border-slate-100">
-                  <h4 className="text-sm font-semibold mb-4 text-slate-700">Verteilung Gesamtkapital</h4>
-                  <div className="h-12 w-full bg-slate-100 rounded-full flex overflow-hidden">
-                    {/* Fixed Assets */}
-                    <div
-                      className="h-full bg-slate-400 flex items-center justify-center text-white text-xs font-bold transition-all duration-500"
-                      style={{ width: `${(inputs.fixedAssets / results.totalCapital) * 100}%` }}
-                    >
-                      {((inputs.fixedAssets / results.totalCapital) * 100) > 10 && 'Anlage'}
-                    </div>
-                    {/* Working Capital (simplified for visual, WC is part of Funding not strict asset breakdown, mostly Assets = Fixed + Current. WC is a specific metric. 
-                               Let's visualize Assets instead: Fixed + Current Assets.
-                               But we want to show Capital Used.
-                               Let's show Fixed Assets + Net Working Capital? No, that equals Total Capital (simplified).
-                            */}
-                    <div
-                      className="h-full bg-brand-500 flex items-center justify-center text-white text-xs font-bold transition-all duration-500"
-                      style={{ width: `${(results.workingCapital / results.totalCapital) * 100}%` }}
-                    >
-                      {((results.workingCapital / results.totalCapital) * 100) > 10 && 'Working Cap'}
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-400 mt-2 px-1">
-                    <span>Anlagevermögen</span>
-                    <span>Working Capital</span>
-                  </div>
-                </div>
-
               </div>
-            </div>
 
-            {/* Additional Details Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="text-xs text-slate-500 mb-1">Gewinn</div>
-                <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.profit)}</div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="text-xs text-slate-500 mb-1">Forderungen</div>
-                <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.receivables)}</div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="text-xs text-slate-500 mb-1">Verbindlichk.</div>
-                <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.payables)}</div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="text-xs text-slate-500 mb-1">Wareneinsatz</div>
-                <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.cogs)}</div>
+              {/* Section 3: Weitere Kennzahlen (Cash Cycle) - Moved to bottom */}
+              <h3 className="text-sm uppercase tracking-wider text-slate-500 font-bold mb-4 mt-8 flex items-center gap-2">
+                <Clock size={16} /> Weitere Kennzahlen (Cash Cycle)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                <span>Anlagevermögen</span>
+                <span>Working Capital</span>
               </div>
             </div>
 
           </div>
         </div>
+
+        {/* Additional Details Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">Gewinn</div>
+            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.profit)}</div>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">Forderungen</div>
+            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.receivables)}</div>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">Verbindlichk.</div>
+            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.payables)}</div>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <div className="text-xs text-slate-500 mb-1">Wareneinsatz</div>
+            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.cogs)}</div>
+          </div>
+        </div>
       </main>
+
+      {/* Preset Selector Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-lg z-40">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm font-semibold text-slate-500">
+            Szenario wählen:
+          </div>
+          <div className="flex gap-3 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
+            {INDUSTRY_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                onClick={() => setInputs(preset.inputs)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors border border-slate-300 flex flex-col items-start min-w-[140px]"
+              >
+                <span className="font-bold text-slate-900">{preset.label}</span>
+                <span className="text-[10px] opacity-70 truncate max-w-full">{preset.description}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setInputs(DEFAULT_INPUTS)}
+              className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-500 rounded-lg text-sm font-medium transition-colors border border-slate-200"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
