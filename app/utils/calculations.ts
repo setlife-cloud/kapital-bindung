@@ -1,14 +1,14 @@
 import { SimulatorInputs, SimulatorResults, KPIStatus } from "../types";
 
 export const DEFAULT_INPUTS: SimulatorInputs = {
-    annualRevenue: 3000000,
-    cogsPercentage: 50,
-    inventoryValue: 600000,
-    wip: 200000,
-    receivablesDays: 30,
-    payablesDays: 20,
-    fixedAssets: 2000000,
-    profitMargin: 8,
+    annualRevenue: 20000000,      // 20,0 Mio €
+    cogsPercentage: 40,            // 40%
+    inventoryValue: 2000000,       // 2,0 Mio €
+    wip: 850000,                   // 850 T€
+    receivablesDays: 30,           // 30 Tage
+    payablesDays: 25,              // 25 Tage
+    fixedAssets: 10000000,         // 10,0 Mio €
+    profitMargin: 9,               // 9%
 };
 
 export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
@@ -45,9 +45,10 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
     const profit = annualRevenue * (profitMargin / 100);
 
     // 8. Cash / Liquidität (Total Budget Model)
-    // User requested: Higher profit -> Higher available cash.
-    const TOTAL_LIQUIDITY_POOL = 12000000; // 12 Mio € Base Funding
-    const cash = (TOTAL_LIQUIDITY_POOL + profit) - totalCapital;
+    // User requested: 60% of revenue + 1x profit
+    // Formula: Cash = (60% of revenue + 1x profit) - Total Capital
+    const BASE_LIQUIDITY_POOL = annualRevenue * 0.6; // 60% of revenue as base funding
+    const cash = (BASE_LIQUIDITY_POOL + profit) - totalCapital;
 
     // --- KPIs Calculations ---
 
@@ -115,24 +116,24 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
 
 export const getKPIColor = {
     capitalTurnover: (val: number): KPIStatus => {
-        if (val >= 2.0) return 'good';
+        if (val > 1.5) return 'good';
         if (val >= 1.0) return 'neutral';
         return 'critical';
     },
     inventoryTurnover: (val: number): KPIStatus => {
-        if (val > 10) return 'alert';
-        if (val >= 6) return 'good';
+        if (val > 10) return 'alert'; // Keep alert for extreme values
+        if (val > 6) return 'good';
         if (val >= 3) return 'neutral';
         return 'critical';
     },
     inventoryDays: (val: number): KPIStatus => {
-        if (val <= 10 && val > 0) return 'alert';
-        if (val <= 45 && val > 0) return 'good';
-        if (val <= 90 && val > 0) return 'neutral';
+        if (val <= 10 && val > 0) return 'alert'; // Keep alert for extreme risk
+        if (val < 60 && val > 0) return 'good';
+        if (val <= 120 && val > 0) return 'neutral';
         return 'critical';
     },
     roi: (val: number): KPIStatus => {
-        if (val >= 15) return 'good';
+        if (val > 15) return 'good';
         if (val >= 8) return 'neutral';
         return 'critical';
     },
@@ -155,42 +156,42 @@ export const INDUSTRY_PRESETS: { label: string; description: string; inputs: Sim
         label: "Handelsbetrieb",
         description: "Hoher Warenumschlag, geringe Anlagen.",
         inputs: {
-            annualRevenue: 5000000,
-            cogsPercentage: 70,
-            inventoryValue: 400000,
-            wip: 0,
-            receivablesDays: 14,
-            payablesDays: 30,
-            fixedAssets: 500000,
-            profitMargin: 4,
+            annualRevenue: 14000000,      // 14 Mio €
+            cogsPercentage: 75,            // 75%
+            inventoryValue: 4500000,       // 4,5 Mio €
+            wip: 100000,                   // 100 T€
+            receivablesDays: 30,           // 30 Tage
+            payablesDays: 25,              // 25 Tage
+            fixedAssets: 3000000,          // 3,0 Mio €
+            profitMargin: 3,               // 3%
         }
     },
     {
         label: "Serienfertiger",
         description: "Ausgewogene Struktur, mittlere Anlagen.",
         inputs: {
-            annualRevenue: 12000000,
-            cogsPercentage: 55,
-            inventoryValue: 1500000,
-            wip: 500000,
-            receivablesDays: 30,
-            payablesDays: 30,
-            fixedAssets: 4000000,
-            profitMargin: 8,
+            annualRevenue: 25000000,      // 25 Mio €
+            cogsPercentage: 55,            // 55%
+            inventoryValue: 3000000,       // 3,0 Mio €
+            wip: 1200000,                  // 1.200 T€
+            receivablesDays: 40,           // 40 Tage
+            payablesDays: 35,              // 35 Tage
+            fixedAssets: 10000000,         // 10,0 Mio €
+            profitMargin: 6,               // 6%
         }
     },
     {
-        label: "Projektfertiger",
+        label: "Einzelfertiger",
         description: "Hohes WIP, geringer Umschlag.",
         inputs: {
-            annualRevenue: 8000000,
-            cogsPercentage: 45,
-            inventoryValue: 800000,
-            wip: 2000000,
-            receivablesDays: 60,
-            payablesDays: 20,
-            fixedAssets: 1500000,
-            profitMargin: 6,
+            annualRevenue: 25000000,      // 25 Mio €
+            cogsPercentage: 40,            // 40%
+            inventoryValue: 1000000,       // 1,0 Mio €
+            wip: 4000000,                  // 4.000 T€
+            receivablesDays: 60,           // 60 Tage
+            payablesDays: 40,              // 40 Tage
+            fixedAssets: 8000000,          // 8,0 Mio €
+            profitMargin: 8,               // 8%
         }
     }
 ];
