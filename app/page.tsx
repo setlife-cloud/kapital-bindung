@@ -33,31 +33,115 @@ export default function Simulator() {
     return CURRENCY_FORMAT.format(val);
   };
 
-  // Quick Interpretation Text
+  // Interpretation Logic with consolidated status (Multi-Message)
   const getInterpretation = () => {
-    // Simple logic based on specs
-    if (getKPIColor.inventoryTurnover(results.inventoryTurnover) === 'critical') {
-      return {
-        title: "Hohe Lagerbestände!",
-        text: "Dein Lager wird relativ selten umgeschlagen. Es ist viel Kapital in Vorräten gebunden – Ansatzpunkt: Lagerbestand reduzieren oder Beschaffung optimieren."
-      };
+    let status: 'good' | 'neutral' | 'critical' = 'good';
+
+    // Collect all relevant messages
+    const messages: { title: string; text: string; type: 'critical' | 'neutral' | 'good' }[] = [];
+
+    // 1. Critical Risks
+    if (results.riskLabel === 'high') {
+      status = 'critical';
+      messages.push({
+        type: 'critical',
+        title: "Kritisches Risiko: Lagerbestand",
+        text: results.riskMessage || "Kritischer Lagerbestand."
+      });
     }
+
     if (getKPIColor.roi(results.roi) === 'critical') {
-      return {
-        title: "Niedriger ROI!",
-        text: "Der Return on Investment ist kritisch. Prüfe, ob du das eingesetzte Kapital (Anlagevermögen + WC) reduzieren oder die Marge erhöhen kannst."
-      };
+      if (status !== 'critical') status = 'critical'; // Upgrade status
+      messages.push({
+        type: 'critical',
+        title: "Kritisch: Niedriger ROI",
+        text: "Der Return on Investment ist zu niedrig."
+      });
     }
-    if (getKPIColor.workingCapitalDays(results.workingCapitalDays) === 'critical') {
-      return {
-        title: "Liquidität gebunden!",
-        text: "Dein Working Capital bindet für lange Zeit Mittel. Kürzere Debitorenziele oder längere Kreditorenziele könnten die Liquidität verbessern."
-      };
+
+    if (getKPIColor.inventoryDays(results.inventoryDays) === 'critical') {
+      if (status !== 'critical') status = 'critical';
+      messages.push({
+        type: 'critical',
+        title: "Kritisch: Lange Lagerdauer",
+        text: "Kapital ist zu lange im Lager gebunden."
+      });
     }
-    return {
-      title: "Solide Kennzahlen",
-      text: "Deine aktuellen Einstellungen führen zu einer soliden Kapitalstruktur und Rentabilität. Experimentiere weiter!"
-    };
+
+    // 2. Warnings / Neutral
+    if (results.workingCapital < 0) {
+      if (status === 'good') status = 'neutral';
+      messages.push({
+        type: 'neutral',
+        title: "Achtung: Negatives Working Capital",
+        text: "Umlaufvermögen wird über Lieferanten finanziert."
+      });
+    }
+
+    if (results.riskLabel === 'medium') {
+      if (status === 'good') status = 'neutral';
+      messages.push({
+        type: 'neutral',
+        title: "Warnung: Flexibilität",
+        text: results.riskMessage || "Geringer Puffer."
+      });
+    }
+
+    if (getKPIColor.capitalTurnover(results.capitalTurnover) === 'critical') {
+      if (status === 'good') status = 'neutral';
+      messages.push({
+        type: 'neutral',
+        title: "Ineffizienz",
+        text: "Kapitalumschlag ist langsam."
+      });
+    }
+
+    // 3. Good News (only if not overwhelmed by criticals, or allows mix?)
+    // User wants mixed signals allowed.
+    if (getKPIColor.roi(results.roi) === 'good') {
+      messages.push({
+        type: 'good',
+        title: "Starker ROI",
+        text: "Deine Rentabilität ist ausgezeichnet."
+      });
+    }
+    if (getKPIColor.inventoryTurnover(results.inventoryTurnover) === 'good' && results.riskLabel === 'low') {
+      messages.push({
+        type: 'good',
+        title: "Effizientes Lager",
+        text: "Schneller Lagerumschlag."
+      });
+    }
+
+    // Fallback if empty
+    if (messages.length === 0) {
+      messages.push({
+        type: 'good',
+        title: "Ausgewogen",
+        text: "Deine aktuellen Einstellungen führen zu einer soliden Kapitalstruktur."
+      });
+    }
+
+    // Sort messages: Critical first, then Neutral, then Good.
+    // Pick top 2.
+    const priority = { critical: 0, neutral: 1, good: 2 };
+    messages.sort((a, b) => priority[a.type] - priority[b.type]);
+
+    const displayMessages = messages.slice(0, 2);
+
+    // Determine Container Color based on overall status
+    let colorClass = "bg-emerald-100 border-emerald-300 text-emerald-900";
+    let iconColor = "text-emerald-700";
+
+    if (status === 'critical') {
+      colorClass = "bg-red-100 border-red-300 text-red-900";
+      iconColor = "text-red-700";
+    } else if (status === 'neutral') {
+      colorClass = "bg-amber-100 border-amber-300 text-amber-900";
+      iconColor = "text-amber-700";
+    }
+
+    return { displayMessages, colorClass, iconColor, status };
   };
 
   const interpretation = getInterpretation();
@@ -176,18 +260,25 @@ export default function Simulator() {
           {/* RIGHT COLUMN: OUTPUTS */}
           <div className="lg:col-span-8 space-y-6">
 
-            {/* Highlight Cards - Interpretation */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-6 text-white shadow-lg">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-                  <Info className="text-brand-300" size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold mb-1">{interpretation.title}</h3>
-                  <p className="text-slate-300 leading-relaxed text-sm lg:text-base">
-                    {interpretation.text}
-                  </p>
-                </div>
+            {/* Highlight Cards - Interpretation (Dynamic Color) */}
+            <div className={cn("rounded-xl p-6 shadow-md border-l-8 transition-colors duration-300 h-48 overflow-hidden", interpretation.colorClass)}>
+              <div className="flex flex-col gap-4 h-full justify-center">
+                {interpretation.displayMessages.map((msg, idx) => (
+                  <div key={idx} className="flex items-start gap-4">
+                    <div>
+                      <h3 className={cn("text-lg font-bold leading-tight",
+                        msg.type === 'critical' ? 'text-red-800' :
+                          msg.type === 'good' ? 'text-emerald-800' : 'text-amber-800'
+                      )}>{msg.title}</h3>
+                      <p className={cn("leading-snug text-sm mt-1 font-medium",
+                        msg.type === 'critical' ? 'text-red-700/90' :
+                          msg.type === 'good' ? 'text-emerald-700/90' : 'text-amber-700/90'
+                      )}>
+                        {msg.text}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -247,11 +338,13 @@ export default function Simulator() {
                     </div>
                   </div>
                   <div className="text-center pt-4 md:pt-0">
-                    <div className="text-slate-500 text-sm mb-1 uppercase font-semibold">Gesamtkapital</div>
+                    <div className="text-slate-500 text-sm mb-1 uppercase font-semibold">Gebundenes Kapital (Total)</div>
                     <div className="text-2xl font-bold text-slate-900">{formatCurrency(results.totalCapital)}</div>
-                    <div className="text-xs text-slate-400 mt-1">Gebunden im Unternehmen</div>
+                    <div className="text-xs text-slate-400 mt-1">Anlage + Working Capital</div>
                   </div>
                 </div>
+
+
 
                 {/* Simple Bar Visualization */}
                 <div className="mt-8 pt-8 border-t border-slate-100">

@@ -40,7 +40,8 @@ export function KPICard({ title, value, status = 'neutral', description, subtext
                     <div className="mt-2 flex flex-col gap-0.5">
                         {description && <span className={cn("text-xs font-bold uppercase",
                             status === 'good' ? 'text-emerald-700' :
-                                status === 'neutral' ? 'text-amber-700' : 'text-rose-700'
+                                status === 'neutral' ? 'text-amber-700' :
+                                    status === 'alert' ? 'text-red-900' : 'text-rose-700'
                         )}>{description}</span>}
                         {subtext && <p className="text-xs opacity-70">{subtext}</p>}
                     </div>

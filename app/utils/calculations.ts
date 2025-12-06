@@ -25,11 +25,9 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
     const cogs = annualRevenue * (cogsPercentage / 100);
 
     // 2. Durchschnittlicher Forderungsbestand
-    // forderungen = umsatz / 360 * debitorentage
     const receivables = (annualRevenue / 360) * receivablesDays;
 
     // 3. Durchschnittlicher Lieferantenkredit (Verbindlichkeiten)
-    // lieferantenschulden = wareneinsatz / 360 * kreditorentage
     const payables = (cogs / 360) * payablesDays;
 
     // 4. Umlaufvermögen (Lager + Forderungen)
@@ -39,44 +37,55 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
     const workingCapital = currentAssets - payables;
 
     // 6. Gesamtkapital
-    // gesamtkapital = anlagevermoegen + working_capital
-    // Fallback: if working capital is negative, do we subtract it? Specs say:
-    // "Falls working_capital < 0 -> mindestens 0 setzen oder explizit 'negatives WC' zeigen."
-    // For the calculation of Total Capital, usually Fixed + WC is correct even if WC is negative (means funded by payables).
-    // However, specs say "mindestens 0 setzen" implies for Total Capital calculation purposes maybe?
-    // Let's stick to strict addition first, but specs hint at "mindestens 0".
-    // Let's assume Total Capital = Fixed + Max(0, WC) for denominator safety?
-    // Actually, standard BWL: Total Capital = Fixed Assets + Current Assets ( Gross) ? Or Net?
-    // Specs say: `gesamtkapital = anlagevermoegen + working_capital`.
-    // If WC is negative, financing reduces capital need.
-    // Warning: If Total Capital becomes <= 0, we have division by zero risk.
     const totalCapital = fixedAssets + workingCapital;
 
-    // 7. Gewinn
+    // 7. Base Profit
     const profit = annualRevenue * (profitMargin / 100);
 
-    // --- KPIs ---
+    // --- KPIs Calculations (Order matters for dependency) ---
 
-    // 1. Kapitalumschlag
-    // kapitalumschlag = umsatz / gesamtkapital
-    const capitalTurnover = totalCapital > 0 ? annualRevenue / totalCapital : 0;
-
-    // 2. Lagerumschlag
-    // lagerumschlag = wareneinsatz / lagerbestand
+    // 1. Lagerumschlag
     const inventoryTurnover = inventoryValue > 0 ? cogs / inventoryValue : 0;
 
-    // 3. Lagerdauer
-    // lagerdauer = 360 / lagerumschlag
+    // 2. Lagerdauer
     const inventoryDays = inventoryTurnover > 0 ? 360 / inventoryTurnover : 0;
 
-    // 4. ROI
-    // roi = gewinn / gesamtkapital
-    const roi = totalCapital > 0 ? (profit / totalCapital) * 100 : 0;
+    // 3. Capital Turnover
+    const capitalTurnover = totalCapital > 0 ? annualRevenue / totalCapital : 0;
 
-    // 5. Working Capital in Tagen
-    // working_capital_tage = working_capital / (umsatz / 360)
+    // 4. Working Capital Days
     const dailyRevenue = annualRevenue / 360;
     const workingCapitalDays = dailyRevenue > 0 ? workingCapital / dailyRevenue : 0;
+
+    // --- Risk & Logic Adjustments for "Low Stock" ---
+    // User Requirement: 
+    // - Clear negative effects of low stock (Costs, Flexibility)
+    // - Harder to find "optimal mix"
+
+    let riskLabel: 'low' | 'medium' | 'high' = 'low';
+    let riskMessage = '';
+
+    let adjustedProfit = profit;
+
+    // Risk Logic: High Inventory Turnover (> 10) OR Low Value (< 10% of COGS or fixed threshold)
+    if (inventoryTurnover > 10 || (cogs > 0 && inventoryValue < cogs * 0.05)) {
+        // Critical: High Supplier Costs penalty (e.g. +5% COGS effectively)
+        const penalty = cogs * 0.05;
+        adjustedProfit -= penalty;
+        riskLabel = 'high';
+        riskMessage = "Warnung: Lagerbestand kritisch niedrig! Hohe Lieferantenkosten (Sonderfahrten) und Produktionsausfälle senken den Gewinn.";
+    } else if (inventoryTurnover > 6) {
+        // Warning: Flexibility issues
+        // Minor penalty? Or just visual warning?
+        // Let's add slight cost penalty for "rush orders"
+        const penalty = cogs * 0.01;
+        adjustedProfit -= penalty;
+        riskLabel = 'medium';
+        riskMessage = "Achtung: Geringer Puffer. Flexibilität eingeschränkt, leicht erhöhte Beschaffungskosten.";
+    }
+
+    // 5. ROI (Adjusted with penalty)
+    const roi = totalCapital > 0 ? (adjustedProfit / totalCapital) * 100 : 0;
 
     return {
         cogs,
@@ -85,12 +94,14 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
         currentAssets,
         workingCapital,
         totalCapital,
-        profit,
+        profit: adjustedProfit,
         capitalTurnover,
         inventoryTurnover,
         inventoryDays,
         roi,
         workingCapitalDays,
+        riskLabel,
+        riskMessage
     };
 }
 
@@ -101,17 +112,21 @@ export const getKPIColor = {
         return 'critical';
     },
     inventoryTurnover: (val: number): KPIStatus => {
+        // Modified Logic: Too high turnover is now "Risk"!
+        // 6-10: Green (Efficient but safe)
+        // 3-6: Yellow (Bit slow, capital bound)
+        // <3: Red (Dead capital)
+        // >10: Red (Risk of stockout!)
+        if (val > 10) return 'alert';
         if (val >= 6) return 'good';
         if (val >= 3) return 'neutral';
         return 'critical';
     },
     inventoryDays: (val: number): KPIStatus => {
+        if (val <= 10 && val > 0) return 'alert'; // < 10 days stock is risky
         if (val <= 45 && val > 0) return 'good';
         if (val <= 90 && val > 0) return 'neutral';
-        return 'critical'; // > 90 or 0 (bad?) usually 0 inventory means 0 days which is good? logic adjustment: 0 turnover = 0 days in code, but actually infinite days if stock exists?
-        // If inventoryValue > 0 and turnover 0 -> days infinite. Implementation returns 0.
-        // Let's assume if inventory > 0, days is high.
-        // For now stick to return value.
+        return 'critical';
     },
     roi: (val: number): KPIStatus => {
         if (val >= 15) return 'good';
@@ -119,11 +134,9 @@ export const getKPIColor = {
         return 'critical';
     },
     workingCapitalDays: (val: number): KPIStatus => {
-        // Green: 0-60, Yellow: 60-120, Red: >120
-        // Also Red/Alert if very negative?
         if (val > 120) return 'critical';
         if (val > 60) return 'neutral';
         if (val >= 0) return 'good';
-        return 'alert'; // Negative WC
+        return 'alert';
     }
 };
