@@ -20,6 +20,10 @@ const NUMBER_FORMAT = new Intl.NumberFormat('de-DE', {
 
 export default function Simulator() {
   const [inputs, setInputs] = useState<SimulatorInputs>(DEFAULT_INPUTS);
+  const [showCapitalTurnoverInfo, setShowCapitalTurnoverInfo] = useState(false);
+  const [showInventoryTurnoverInfo, setShowInventoryTurnoverInfo] = useState(false);
+  const [showInventoryDaysInfo, setShowInventoryDaysInfo] = useState(false);
+  const [showROIInfo, setShowROIInfo] = useState(false);
 
   const results = useMemo(() => calculateResults(inputs), [inputs]);
 
@@ -203,6 +207,14 @@ export default function Simulator() {
                   description="Durchschnittlich gebundenes Kapital im Lager."
                 />
                 <SliderInput
+                  label="Unfertige Erzeugnisse (WIP)"
+                  value={inputs.wip}
+                  onChange={(v) => updateInput('wip', v)}
+                  min={0} max={5000000} step={50000}
+                  formatValue={formatCurrency}
+                  description="Wert der angefangenen Arbeiten (Work in Progress)."
+                />
+                <SliderInput
                   label="Debitorenziel"
                   value={inputs.receivablesDays}
                   onChange={(v) => updateInput('receivablesDays', v)}
@@ -270,30 +282,79 @@ export default function Simulator() {
                 <BarChart3 size={16} /> Effizienz & Rentabilität
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-                <KPICard
-                  title="Kapitalumschlag"
-                  value={NUMBER_FORMAT.format(results.capitalTurnover)}
-                  status={getKPIColor.capitalTurnover(results.capitalTurnover)}
-                  description={getKPIColor.capitalTurnover(results.capitalTurnover) === 'good' ? 'Effizient' : getKPIColor.capitalTurnover(results.capitalTurnover) === 'neutral' ? 'OK' : 'Ineffizient'}
-                />
-                <KPICard
-                  title="Lagerumschlag"
-                  value={NUMBER_FORMAT.format(results.inventoryTurnover)}
-                  status={getKPIColor.inventoryTurnover(results.inventoryTurnover)}
-                  description={getKPIColor.inventoryTurnover(results.inventoryTurnover) === 'good' ? 'Schnell' : 'Langsam'}
-                />
-                <KPICard
-                  title="Lagerdauer"
-                  value={`${results.inventoryDays.toFixed(0)} Tage`}
-                  status={getKPIColor.inventoryDays(results.inventoryDays)}
-                  description={getKPIColor.inventoryDays(results.inventoryDays) === 'critical' ? 'Sehr lang' : 'OK'}
-                />
-                <KPICard
-                  title="ROI"
-                  value={`${results.roi.toFixed(1)} %`}
-                  status={getKPIColor.roi(results.roi)}
-                  description="Return on Invest"
-                />
+                <div className="relative group cursor-pointer" onClick={() => setShowCapitalTurnoverInfo(!showCapitalTurnoverInfo)}>
+                  <KPICard
+                    title="Kapitalumschlag"
+                    value={NUMBER_FORMAT.format(results.capitalTurnover)}
+                    status={getKPIColor.capitalTurnover(results.capitalTurnover)}
+                    description={getKPIColor.capitalTurnover(results.capitalTurnover) === 'good' ? 'Effizient' : getKPIColor.capitalTurnover(results.capitalTurnover) === 'neutral' ? 'OK' : 'Ineffizient'}
+                  />
+                  {showCapitalTurnoverInfo && (
+                    <div className="absolute left-0 bottom-full mb-2 w-48 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
+                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <p className="text-xs text-slate-600 leading-snug">
+                        Kapitalumschlag = <br /> Umsatz / Gesamtkapital
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="relative group cursor-pointer" onClick={() => setShowInventoryTurnoverInfo(!showInventoryTurnoverInfo)}>
+                  <KPICard
+                    title="Lagerumschlag"
+                    value={NUMBER_FORMAT.format(results.inventoryTurnover)}
+                    status={getKPIColor.inventoryTurnover(results.inventoryTurnover)}
+                    description={getKPIColor.inventoryTurnover(results.inventoryTurnover) === 'good' ? 'Schnell' : 'Langsam'}
+                  />
+                  {showInventoryTurnoverInfo && (
+                    <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
+                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <p className="text-xs text-slate-600 leading-snug mb-2">
+                        Lagerumschlag = <br /> Wareneinsatz / Ø Lagerbestand
+                      </p>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Zeigt, wie oft der durchschnittliche Lagerbestand pro Jahr verbraucht oder verkauft wird.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="relative group cursor-pointer" onClick={() => setShowInventoryDaysInfo(!showInventoryDaysInfo)}>
+                  <KPICard
+                    title="Lagerdauer"
+                    value={`${results.inventoryDays.toFixed(0)} Tage`}
+                    status={getKPIColor.inventoryDays(results.inventoryDays)}
+                    description={getKPIColor.inventoryDays(results.inventoryDays) === 'critical' ? 'Sehr lang' : 'OK'}
+                  />
+                  {showInventoryDaysInfo && (
+                    <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
+                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <p className="text-xs text-slate-600 leading-snug mb-2">
+                        Lagerdauer = <br /> 360 / Lagerumschlag
+                      </p>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Gibt an, wie viele Tage das Kapital durchschnittlich im Lager gebunden ist, bevor es wieder zu Umsatz wird.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="relative group cursor-pointer" onClick={() => setShowROIInfo(!showROIInfo)}>
+                  <KPICard
+                    title="ROI"
+                    value={`${results.roi.toFixed(1)} %`}
+                    status={getKPIColor.roi(results.roi)}
+                    description={getKPIColor.roi(results.roi) === 'good' ? 'Stark' : getKPIColor.roi(results.roi) === 'neutral' ? 'Solid' : 'Schwach'}
+                  />
+                  {showROIInfo && (
+                    <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
+                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <p className="text-xs text-slate-600 leading-snug mb-2">
+                        ROI = <br /> (Gewinn / Gesamtkapital) × 100
+                      </p>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Return on Investment. Zeigt die Verzinsung des gesamten im Unternehmen eingesetzten Kapitals.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
 
@@ -304,104 +365,102 @@ export default function Simulator() {
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                 {(() => {
-                  // Gross Assets = The total "stuff" we have (Fixed + Inventory + Receivables)
-                  const grossAssets = inputs.fixedAssets + results.currentAssets;
-                  // Funding Sources:
-                  // 1. Payables (Supplier Credit) -> "Free" (No Interest/Equity needed)
-                  // 2. Net Capital Required (Total Capital) -> "Bound" (Needs Equity/Debt)
+                  // Model: Fixed Budget (12M) + Profit
+                  // Bound = Fixed + WC
+                  // Cash = (12M + Profit) - Bound
+                  const BASE_POOL = 12000000;
+                  const TOTAL_AVAILABLE = BASE_POOL + results.profit;
 
-                  const freePct = (results.payables / grossAssets) * 100;
-                  const boundPct = (results.totalCapital / grossAssets) * 100;
+                  // Scaling: Use TOTAL_AVAILABLE as the 100% width base?
+                  // Or max(TOTAL_AVAILABLE, Bound) to handle overflow?
+                  const maxScale = Math.max(TOTAL_AVAILABLE, results.totalCapital);
 
-                  // Inside Bound, distinguish Fixed vs Net WC for context
-                  // If WC > 0: Bound = Fixed + NetWC
-                  // If WC < 0: Bound = Fixed - Released, so Bound is purely Fixed (and smaller than Fixed)
+                  const fixedPct = (inputs.fixedAssets / maxScale) * 100;
+                  // WC consists of Inventory + WIP (no payables deduction anymore, assumed 0)
+                  const wcPct = (results.workingCapital / maxScale) * 100;
 
-                  const isWCPositive = results.workingCapital > 0;
-                  const fixedInBoundPct = isWCPositive
-                    ? (inputs.fixedAssets / grossAssets) * 100
-                    : boundPct; // If WC < 0, Bound is entirely Fixed (and less than original Fixed)
-
-                  const wcInBoundPct = isWCPositive
-                    ? (results.workingCapital / grossAssets) * 100
-                    : 0;
+                  const cashPct = (results.cash > 0) ? (results.cash / maxScale) * 100 : 0;
+                  const overdraftPct = (results.cash < 0) ? (Math.abs(results.cash) / maxScale) * 100 : 0;
 
                   return (
                     <div className="flex h-12 w-full rounded-lg overflow-hidden mb-2 bg-slate-200 relative">
-                      {/* Segment 1: Fixed Assets (Bound) */}
+                      {/* Segment 1: Fixed Assets (Bound) - Orange/Red */}
                       <div
-                        className="bg-blue-600 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
-                        style={{ width: `${fixedInBoundPct}%` }}
+                        className="bg-orange-600 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
+                        style={{ width: `${fixedPct}%` }}
                       >
-                        {fixedInBoundPct > 15 && 'Anlagevermögen'}
+                        {fixedPct > 15 && 'Anlagevermögen'}
                       </div>
 
-                      {/* Segment 2: Net WC (Bound) - Only if WC Positive */}
-                      {isWCPositive && (
+                      {/* Segment 2: Working Capital (Bound) - Amber/Orange */}
+                      <div
+                        className="bg-orange-400 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
+                        style={{ width: `${wcPct}%` }}
+                      >
+                        {wcPct > 15 && 'Umlaufvermögen'}
+                      </div>
+
+                      {/* Segment 3: Cash (Free) - Green OR Overdraft - Dark Red */}
+                      {results.cash >= 0 ? (
                         <div
-                          className="bg-amber-500 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
-                          style={{ width: `${wcInBoundPct}%` }}
+                          className="bg-emerald-500 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
+                          style={{ width: `${cashPct}%` }}
                         >
-                          {wcInBoundPct > 15 && 'Umlaufvermögen'}
+                          {cashPct > 5 && 'Cash'}
+                        </div>
+                      ) : (
+                        <div
+                          className="bg-red-700 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1 animate-pulse"
+                          style={{ width: `${overdraftPct}%` }}
+                        >
+                          Kapitallücke!
                         </div>
                       )}
-
-                      {/* Segment 3: Payables (Free) */}
-                      <div
-                        className="bg-emerald-500 flex items-center justify-center text-white text-xs font-bold transition-all duration-500 overflow-hidden whitespace-nowrap px-1"
-                        style={{ width: `${freePct}%` }}
-                      >
-                        {freePct > 5 && 'Cash'}
-                      </div>
                     </div>
                   );
                 })()}
 
                 <div className="flex justify-between text-xs text-slate-500 font-medium px-1 mt-2">
                   <div className="flex flex-col">
-                    <span className="font-bold text-slate-700">Gebunden: {formatCurrency(results.totalCapital)}</span>
-                    <span className="text-[10px] opacity-75">Finanziert durch Bank/Eigenkapital</span>
+                    <span className="font-bold text-slate-700">Gebundenes Kapital: {formatCurrency(results.totalCapital)}</span>
+                    <span className="text-[10px] opacity-75">Anlagen + Lager + WIP</span>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="font-bold text-emerald-600">Frei: {formatCurrency(results.payables)}</span>
-                    <span className="text-[10px] opacity-75">Finanziert durch Lieferanten</span>
+                    <span className={`font-bold ${results.cash < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {results.cash < 0 ? 'Fehlbetrag: ' : 'Verfügbares Cash: '}
+                      {formatCurrency(results.cash)}
+                    </span>
+                    <span className="text-[10px] opacity-75">
+                      Basis: {formatCurrency(12000000 + results.profit)} Gesamtfinanzierung (12M + Gewinn)
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Section 3: Weitere Kennzahlen (Cash Cycle) - Moved to bottom */}
-              <h3 className="text-sm uppercase tracking-wider text-slate-500 font-bold mb-4 mt-8 flex items-center gap-2">
-                <Clock size={16} /> Weitere Kennzahlen (Cash Cycle)
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-                <span>Anlagevermögen</span>
-                <span>Working Capital</span>
+              {/* Section 3: Weitere Details (wieder eingefügt) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <div className="text-xs text-slate-500 mb-1">Gewinn</div>
+                  <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.profit)}</div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <div className="text-xs text-slate-500 mb-1">Forderungen</div>
+                  <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.receivables)}</div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <div className="text-xs text-slate-500 mb-1">Verbindlichk.</div>
+                  <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.payables)}</div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <div className="text-xs text-slate-500 mb-1">Wareneinsatz</div>
+                  <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.cogs)}</div>
+                </div>
               </div>
             </div>
-
           </div>
         </div>
 
-        {/* Additional Details Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">Gewinn</div>
-            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.profit)}</div>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">Forderungen</div>
-            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.receivables)}</div>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">Verbindlichk.</div>
-            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.payables)}</div>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <div className="text-xs text-slate-500 mb-1">Wareneinsatz</div>
-            <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.cogs)}</div>
-          </div>
-        </div>
+
       </main>
 
       {/* Preset Selector Footer */}

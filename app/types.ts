@@ -2,8 +2,9 @@ export interface SimulatorInputs {
     annualRevenue: number;
     cogsPercentage: number; // 0-100
     inventoryValue: number;
-    receivablesDays: number;
-    payablesDays: number;
+    wip: number; // Unfertige Erzeugnisse
+    receivablesDays: number; // Forderungslaufzeit
+    payablesDays: number; // Verbindlichkeitenlaufzeit
     fixedAssets: number;
     profitMargin: number; // 0-100
 }
@@ -17,6 +18,7 @@ export interface SimulatorResults {
     workingCapital: number;
     totalCapital: number;
     profit: number; // Gewinn (absolute)
+    cash: number; // Freie Liquidität
 
     // KPIs
     capitalTurnover: number; // Kapitalumschlag

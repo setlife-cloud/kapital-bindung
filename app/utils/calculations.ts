@@ -4,6 +4,7 @@ export const DEFAULT_INPUTS: SimulatorInputs = {
     annualRevenue: 3000000,
     cogsPercentage: 50,
     inventoryValue: 600000,
+    wip: 200000,
     receivablesDays: 30,
     payablesDays: 20,
     fixedAssets: 2000000,
@@ -15,6 +16,7 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
         annualRevenue,
         cogsPercentage,
         inventoryValue,
+        wip,
         receivablesDays,
         payablesDays,
         fixedAssets,
@@ -30,10 +32,10 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
     // 3. Durchschnittlicher Lieferantenkredit (Verbindlichkeiten)
     const payables = (cogs / 360) * payablesDays;
 
-    // 4. Umlaufvermögen (Lager + Forderungen)
-    const currentAssets = inventoryValue + receivables;
+    // 4. Umlaufvermögen (Lager + WIP + Folgerungen)
+    const currentAssets = inventoryValue + wip + receivables;
 
-    // 5. Working Capital
+    // 5. Working Capital (Umlaufvermögen - Verbindlichkeiten)
     const workingCapital = currentAssets - payables;
 
     // 6. Gesamtkapital
@@ -42,7 +44,12 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
     // 7. Base Profit
     const profit = annualRevenue * (profitMargin / 100);
 
-    // --- KPIs Calculations (Order matters for dependency) ---
+    // 8. Cash / Liquidität (Total Budget Model)
+    // User requested: Higher profit -> Higher available cash.
+    const TOTAL_LIQUIDITY_POOL = 12000000; // 12 Mio € Base Funding
+    const cash = (TOTAL_LIQUIDITY_POOL + profit) - totalCapital;
+
+    // --- KPIs Calculations ---
 
     // 1. Lagerumschlag
     const inventoryTurnover = inventoryValue > 0 ? cogs / inventoryValue : 0;
@@ -57,44 +64,31 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
     const dailyRevenue = annualRevenue / 360;
     const workingCapitalDays = dailyRevenue > 0 ? workingCapital / dailyRevenue : 0;
 
-    // --- New KPIs (User Request 8) ---
-    // Cash-to-Cash Cycle = Inventory Days + Receivables Days - Payables Days
+    // Levers
+    const receivablesTurnover = receivables > 0 ? annualRevenue / receivables : 0;
+    const payablesTurnover = payables > 0 ? cogs / payables : 0;
     const cashToCashCycle = inventoryDays + receivablesDays - payablesDays;
 
-    // Receivables Turnover = Revenue / Receivables (or 360 / Days)
-    const receivablesTurnover = receivables > 0 ? annualRevenue / receivables : 0;
-    // Payables Turnover = COGS / Payables (or 360 / Days)
-    const payablesTurnover = payables > 0 ? cogs / payables : 0;
 
-
-    // --- Risk & Logic Adjustments for "Low Stock" ---
-    // User Requirement: 
-    // - Clear negative effects of low stock (Costs, Flexibility)
-    // - Harder to find "optimal mix"
-
+    // --- Risk & Logic Adjustments ---
     let riskLabel: 'low' | 'medium' | 'high' = 'low';
     let riskMessage = '';
 
     let adjustedProfit = profit;
 
-    // Risk Logic: High Inventory Turnover (> 10) OR Low Value (< 10% of COGS or fixed threshold)
+    // Risk Logic
     if (inventoryTurnover > 10 || (cogs > 0 && inventoryValue < cogs * 0.05)) {
-        // Critical: High Supplier Costs penalty (e.g. +5% COGS effectively)
         const penalty = cogs * 0.05;
         adjustedProfit -= penalty;
         riskLabel = 'high';
-        riskMessage = "Warnung: Lagerbestand kritisch niedrig! Hohe Lieferantenkosten (Sonderfahrten) und Produktionsausfälle senken den Gewinn.";
+        riskMessage = "Warnung: Lagerbestand kritisch niedrig! Hohe Lieferantenkosten und Produktionsausfälle senken den Gewinn.";
     } else if (inventoryTurnover > 6) {
-        // Warning: Flexibility issues
-        // Minor penalty? Or just visual warning?
-        // Let's add slight cost penalty for "rush orders"
         const penalty = cogs * 0.01;
         adjustedProfit -= penalty;
         riskLabel = 'medium';
         riskMessage = "Achtung: Geringer Puffer. Flexibilität eingeschränkt, leicht erhöhte Beschaffungskosten.";
     }
 
-    // 5. ROI (Adjusted with penalty)
     const roi = totalCapital > 0 ? (adjustedProfit / totalCapital) * 100 : 0;
 
     return {
@@ -114,7 +108,8 @@ export function calculateResults(inputs: SimulatorInputs): SimulatorResults {
         receivablesTurnover,
         payablesTurnover,
         riskLabel,
-        riskMessage
+        riskMessage,
+        cash
     };
 }
 
@@ -125,18 +120,13 @@ export const getKPIColor = {
         return 'critical';
     },
     inventoryTurnover: (val: number): KPIStatus => {
-        // Modified Logic: Too high turnover is now "Risk"!
-        // 6-10: Green (Efficient but safe)
-        // 3-6: Yellow (Bit slow, capital bound)
-        // <3: Red (Dead capital)
-        // >10: Red (Risk of stockout!)
         if (val > 10) return 'alert';
         if (val >= 6) return 'good';
         if (val >= 3) return 'neutral';
         return 'critical';
     },
     inventoryDays: (val: number): KPIStatus => {
-        if (val <= 10 && val > 0) return 'alert'; // < 10 days stock is risky
+        if (val <= 10 && val > 0) return 'alert';
         if (val <= 45 && val > 0) return 'good';
         if (val <= 90 && val > 0) return 'neutral';
         return 'critical';
@@ -152,9 +142,8 @@ export const getKPIColor = {
         if (val >= 0) return 'good';
         return 'alert';
     },
-    // New KPIs Colors
     cashToCashCycle: (val: number): KPIStatus => {
-        if (val < 0) return 'good'; // Negative is usually good (supplier financed)
+        if (val < 0) return 'good';
         if (val < 45) return 'good';
         if (val < 90) return 'neutral';
         return 'critical';
@@ -164,41 +153,44 @@ export const getKPIColor = {
 export const INDUSTRY_PRESETS: { label: string; description: string; inputs: SimulatorInputs }[] = [
     {
         label: "Handelsbetrieb",
-        description: "Hoher Warenumschlag, geringe Anlagen, schlanke Struktur.",
+        description: "Hoher Warenumschlag, geringe Anlagen.",
         inputs: {
-            annualRevenue: 10000000, // Higher volume
-            cogsPercentage: 75, // Lower margin trade
-            inventoryValue: 800000, // Fast turnover (~9.3)
-            receivablesDays: 20, // B2C/B2B Mix
-            payablesDays: 45, // Power over suppliers
-            fixedAssets: 500000, // Warehouse/IT
-            profitMargin: 3, // Thin margin
+            annualRevenue: 5000000,
+            cogsPercentage: 70,
+            inventoryValue: 400000,
+            wip: 0,
+            receivablesDays: 14,
+            payablesDays: 30,
+            fixedAssets: 500000,
+            profitMargin: 4,
         }
     },
     {
         label: "Serienfertiger",
-        description: "Skaleneffekte, hohe Anlagenintensität, aber effizient.",
+        description: "Ausgewogene Struktur, mittlere Anlagen.",
         inputs: {
-            annualRevenue: 25000000, // High Volume (Scale)
-            cogsPercentage: 60,
-            inventoryValue: 3000000, // Turnover ~5 (Buffer)
-            receivablesDays: 30, // Standard
+            annualRevenue: 12000000,
+            cogsPercentage: 55,
+            inventoryValue: 1500000,
+            wip: 500000,
+            receivablesDays: 30,
             payablesDays: 30,
-            fixedAssets: 8000000, // Heavy Machinery
-            profitMargin: 9, // Efficiency gains -> Good Profit
+            fixedAssets: 4000000,
+            profitMargin: 8,
         }
     },
     {
         label: "Projektfertiger",
-        description: "Hohe Komplexität, lange Bindung in unfertigen Erzeugnissen (WIP).",
+        description: "Hohes WIP, geringer Umschlag.",
         inputs: {
-            annualRevenue: 8000000, // Lower volume (Custom)
-            cogsPercentage: 55,
-            inventoryValue: 3500000, // Very High WIP -> low turnover
-            receivablesDays: 60, // Milestone payments slow
-            payablesDays: 20, // Suppliers want fast pay
-            fixedAssets: 2000000, // Workshop/Engineering
-            profitMargin: 11, // Higher margin, but eaten by capital cost
+            annualRevenue: 8000000,
+            cogsPercentage: 45,
+            inventoryValue: 800000,
+            wip: 2000000,
+            receivablesDays: 60,
+            payablesDays: 20,
+            fixedAssets: 1500000,
+            profitMargin: 6,
         }
     }
 ];
