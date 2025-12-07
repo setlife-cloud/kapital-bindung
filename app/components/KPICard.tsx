@@ -26,27 +26,37 @@ const statusIndicators: Record<KPIStatus, string> = {
 };
 
 export function KPICard({ title, value, status = 'neutral', description, subtext, className }: KPICardProps) {
+    const statusColor = status === 'good' ? 'bg-emerald-500' :
+        status === 'neutral' ? 'bg-amber-500' :
+            status === 'alert' ? 'bg-red-600' : 'bg-rose-500';
+
+    const statusTextColor = status === 'good' ? 'text-emerald-700' :
+        status === 'neutral' ? 'text-amber-700' :
+            status === 'alert' ? 'text-red-700' : 'text-rose-700';
+
     return (
         <div className={cn(
-            "relative overflow-hidden rounded-lg border-l-4 p-3 shadow-sm transition-all hover:shadow-md bg-white",
-            statusColors[status],
-            "border-opacity-100", // ensure border is visible
+            "relative overflow-hidden bg-white shadow-sm border border-slate-100 p-3 h-full flex flex-col justify-between",
             className
         )}>
-            <div className="flex flex-col gap-0.5">
-                <h3 className="font-heading text-sm font-medium opacity-80">{title}</h3>
-                <div className="text-2xl font-bold tracking-tight">{value}</div>
-                {(description || subtext) && (
-                    <div className="mt-2 flex flex-col gap-0.5">
-                        {description && <span className={cn("text-xs font-bold uppercase",
-                            status === 'good' ? 'text-emerald-700' :
-                                status === 'neutral' ? 'text-amber-700' :
-                                    status === 'alert' ? 'text-red-900' : 'text-rose-700'
-                        )}>{description}</span>}
-                        {subtext && <p className="text-xs opacity-70">{subtext}</p>}
-                    </div>
-                )}
+            {/* Status Bar */}
+            <div className={cn("absolute top-0 left-0 w-full h-1", statusColor)} />
+
+            <div className="flex flex-col gap-1 mt-1">
+                <h3 className="font-heading text-xs uppercase tracking-wide text-slate-500 font-semibold">{title}</h3>
+                <div className="text-xl font-bold text-slate-800 tracking-tight">{value}</div>
             </div>
+
+            {(description || subtext) && (
+                <div className="mt-2 text-xs">
+                    {description && (
+                        <div className={cn("font-bold uppercase", statusTextColor)}>
+                            {description}
+                        </div>
+                    )}
+                    {subtext && <p className="text-slate-400 mt-0.5">{subtext}</p>}
+                </div>
+            )}
         </div>
     );
 }
