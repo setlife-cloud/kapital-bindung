@@ -153,8 +153,8 @@ export default function Simulator() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-4">
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
 
           {/* LEFT COLUMN: INPUTS */}
           <div className="lg:col-span-4 space-y-4">
@@ -163,7 +163,7 @@ export default function Simulator() {
             <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
               <div className="flex items-center gap-2 mb-3 text-brand-700">
                 <TrendingUp size={18} />
-                <h2 className="font-semibold text-base">Umsatz & Marge</h2>
+                <h2 className="font-heading font-semibold text-base">Umsatz & Marge</h2>
               </div>
               <div className="space-y-4">
                 <SliderInput
@@ -195,7 +195,7 @@ export default function Simulator() {
             <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
               <div className="flex items-center gap-2 mb-3 text-brand-700">
                 <Package size={18} />
-                <h2 className="font-semibold text-base">Lager & Working Capital</h2>
+                <h2 className="font-heading font-semibold text-base">Lager & Working Capital</h2>
               </div>
               <div className="space-y-4">
                 <SliderInput
@@ -235,7 +235,7 @@ export default function Simulator() {
             <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
               <div className="flex items-center gap-2 mb-3 text-brand-700">
                 <DollarSign size={18} />
-                <h2 className="font-semibold text-base">Anlagevermögen</h2>
+                <h2 className="font-heading font-semibold text-base">Anlagevermögen</h2>
               </div>
               <div className="space-y-4">
                 <SliderInput
@@ -254,13 +254,18 @@ export default function Simulator() {
           {/* RIGHT COLUMN: OUTPUTS */}
           <div className="lg:col-span-8 flex flex-col gap-4">
 
+            {/* Logo in top right corner */}
+            <div className="flex justify-end mb-2">
+              <img src="/tha-logo.svg" alt="THA Logo" className="h-8 opacity-80" />
+            </div>
+
             {/* Highlight Cards - Interpretation (Dynamic Color) */}
-            <div className={cn("rounded-xl p-4 shadow-md border-l-8 transition-colors duration-300 h-auto min-h-[140px] shrink-0", interpretation.colorClass)}>
-              <div className="flex flex-col gap-4 h-full justify-center">
+            <div className={cn("rounded-xl p-3 shadow-md border-l-8 transition-colors duration-300 h-[180px] shrink-0", interpretation.colorClass)}>
+              <div className="flex flex-col gap-3 h-full justify-center">
                 {interpretation.displayMessages.map((msg, idx) => (
-                  <div key={idx} className="flex items-start gap-4">
+                  <div key={idx} className="flex items-start gap-3">
                     <div>
-                      <h3 className={cn("text-lg font-bold leading-tight",
+                      <h3 className={cn("font-heading text-lg font-bold leading-tight",
                         msg.type === 'critical' ? 'text-red-800' :
                           msg.type === 'good' ? 'text-emerald-800' : 'text-amber-800'
                       )}>{msg.title}</h3>
@@ -278,7 +283,7 @@ export default function Simulator() {
 
             {/* Section 1: Effizienz & Kennzahlen */}
             <div>
-              <h3 className="text-sm uppercase tracking-wider text-slate-500 font-bold mb-4 flex items-center gap-2">
+              <h3 className="font-heading text-sm uppercase tracking-wider text-slate-500 font-bold mb-3 flex items-center gap-2">
                 <BarChart3 size={16} /> Effizienz & Rentabilität
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -290,10 +295,13 @@ export default function Simulator() {
                     description={getKPIColor.capitalTurnover(results.capitalTurnover) === 'good' ? 'Effizient' : getKPIColor.capitalTurnover(results.capitalTurnover) === 'neutral' ? 'OK' : 'Ineffizient'}
                   />
                   {showCapitalTurnoverInfo && (
-                    <div className="absolute left-0 bottom-full mb-2 w-48 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
-                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
-                      <p className="text-xs text-slate-600 leading-snug">
+                    <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
+                      <h4 className="font-heading font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <p className="text-xs text-slate-600 leading-snug mb-2">
                         Kapitalumschlag = <br /> Umsatz / Gesamtkapital
+                      </p>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Zeigt, wie effizient das eingesetzte Kapital genutzt wird. Ein höherer Wert bedeutet, dass mehr Umsatz pro eingesetztem Euro Kapital erzielt wird.
                       </p>
                     </div>
                   )}
@@ -311,7 +319,7 @@ export default function Simulator() {
                   />
                   {showInventoryTurnoverInfo && (
                     <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
-                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <h4 className="font-heading font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
                       <p className="text-xs text-slate-600 leading-snug mb-2">
                         Lagerumschlag = <br /> Wareneinsatz / Ø Lagerbestand
                       </p>
@@ -334,7 +342,7 @@ export default function Simulator() {
                   />
                   {showInventoryDaysInfo && (
                     <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
-                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <h4 className="font-heading font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
                       <p className="text-xs text-slate-600 leading-snug mb-2">
                         Lagerdauer = <br /> 360 / Lagerumschlag
                       </p>
@@ -353,7 +361,7 @@ export default function Simulator() {
                   />
                   {showROIInfo && (
                     <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2">
-                      <h4 className="font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
+                      <h4 className="font-heading font-bold text-slate-800 text-xs mb-1">Erklärung</h4>
                       <p className="text-xs text-slate-600 leading-snug mb-2">
                         ROI = <br /> (Gewinn / Gesamtkapital) × 100
                       </p>
@@ -367,11 +375,11 @@ export default function Simulator() {
 
 
               {/* Section 2: Kapitalstruktur Breakdown (Total Funding View) */}
-              <h3 className="text-sm uppercase tracking-wider text-slate-500 font-bold mb-2 mt-4 flex items-center gap-2">
+              <h3 className="font-heading text-sm uppercase tracking-wider text-slate-500 font-bold mb-2 mt-3 flex items-center gap-2">
                 <PieChart size={16} /> Kapitalstruktur (Finanzierung)
               </h3>
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                 {(() => {
                   // Model: Dynamic Base (60% of Revenue) + 1x Profit
                   // Bound = Fixed + WC
@@ -439,20 +447,20 @@ export default function Simulator() {
               </div>
 
               {/* Section 3: Weitere Details (wieder eingefügt) */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500 mb-1">Gewinn</div>
                   <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.profit)}</div>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500 mb-1">Forderungen</div>
                   <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.receivables)}</div>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500 mb-1">Verbindlichk.</div>
                   <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.payables)}</div>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500 mb-1">Wareneinsatz</div>
                   <div className="font-mono text-lg font-bold text-slate-700">{formatCurrency(results.cogs)}</div>
                 </div>
@@ -461,26 +469,23 @@ export default function Simulator() {
 
             {/* Presets - Moved here from footer */}
             <div className="mt-2 pt-4 border-t border-slate-200">
-              <div className="flex items-center gap-4 mb-2">
-                <span className="text-sm font-semibold text-slate-500 shrink-0">Szenario wählen:</span>
-                <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-thin">
-                  {INDUSTRY_PRESETS.map((preset) => (
-                    <button
-                      key={preset.label}
-                      onClick={() => setInputs(preset.inputs)}
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors border border-slate-300 flex flex-col items-start min-w-[130px] shrink-0 text-left"
-                    >
-                      <span className="font-bold text-slate-900 text-xs">{preset.label}</span>
-                      <span className="text-[10px] opacity-70 truncate max-w-full">{preset.description}</span>
-                    </button>
-                  ))}
+              <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-thin">
+                {INDUSTRY_PRESETS.map((preset) => (
                   <button
-                    onClick={() => setInputs(DEFAULT_INPUTS)}
-                    className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-500 rounded-lg text-sm font-medium transition-colors border border-slate-200 shrink-0"
+                    key={preset.label}
+                    onClick={() => setInputs(preset.inputs)}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors border border-slate-300 flex flex-col items-start min-w-[130px] shrink-0 text-left"
                   >
-                    Reset
+                    <span className="font-bold text-slate-900 text-xs">{preset.label}</span>
+                    <span className="text-[10px] opacity-70 truncate max-w-full">{preset.description}</span>
                   </button>
-                </div>
+                ))}
+                <button
+                  onClick={() => setInputs(DEFAULT_INPUTS)}
+                  className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-500 rounded-lg text-sm font-medium transition-colors border border-slate-200 shrink-0"
+                >
+                  Reset
+                </button>
               </div>
             </div>
           </div>

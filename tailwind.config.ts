@@ -11,12 +11,19 @@ const config: Config = {
                 foreground: "var(--foreground)",
                 // Custom branding colors
                 brand: {
-                    50: '#f0f9ff',
-                    100: '#e0f2fe',
-                    500: '#0ea5e9',
-                    600: '#0284c7',
-                    900: '#0c4a6e',
+                    50: '#fff1f3',
+                    100: '#ffe0e5',
+                    400: '#ff3366',
+                    500: '#ff0350',
+                    600: '#e6024a',
+                    700: '#cc0241',
+                    800: '#b30239',
+                    900: '#990130',
                 }
+            },
+            fontFamily: {
+                'heading': ['var(--font-montserrat)', 'sans-serif'],
+                'sans': ['var(--font-inter)', 'sans-serif'],
             },
         },
     },

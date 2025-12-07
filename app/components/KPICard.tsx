@@ -28,13 +28,13 @@ const statusIndicators: Record<KPIStatus, string> = {
 export function KPICard({ title, value, status = 'neutral', description, subtext, className }: KPICardProps) {
     return (
         <div className={cn(
-            "relative overflow-hidden rounded-lg border-l-4 p-4 shadow-sm transition-all hover:shadow-md bg-white",
+            "relative overflow-hidden rounded-lg border-l-4 p-3 shadow-sm transition-all hover:shadow-md bg-white",
             statusColors[status],
             "border-opacity-100", // ensure border is visible
             className
         )}>
-            <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-medium opacity-80">{title}</h3>
+            <div className="flex flex-col gap-0.5">
+                <h3 className="font-heading text-sm font-medium opacity-80">{title}</h3>
                 <div className="text-2xl font-bold tracking-tight">{value}</div>
                 {(description || subtext) && (
                     <div className="mt-2 flex flex-col gap-0.5">
