@@ -24,6 +24,7 @@ export default function Simulator() {
   const [showInventoryTurnoverInfo, setShowInventoryTurnoverInfo] = useState(false);
   const [showInventoryDaysInfo, setShowInventoryDaysInfo] = useState(false);
   const [showROIInfo, setShowROIInfo] = useState(false);
+  const [showTotalCapitalInfo, setShowTotalCapitalInfo] = useState(false);
 
   const results = useMemo(() => calculateResults(inputs), [inputs]);
 
@@ -431,9 +432,34 @@ export default function Simulator() {
                   })()}
 
                   <div className="flex justify-between text-xs text-slate-500 font-medium px-1 mt-2">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-700">Gebundenes Kapital: {formatCurrency(results.totalCapital)}</span>
-                      <span className="text-[10px] opacity-75">Anlagen + Lager + WIP</span>
+                    <div className="flex flex-col relative group cursor-pointer" onClick={() => setShowTotalCapitalInfo(!showTotalCapitalInfo)}>
+                      <span className="font-bold text-slate-700 decoration-dotted underline decoration-slate-400 underline-offset-2">Gebundenes Kapital: {formatCurrency(results.totalCapital)}</span>
+                      <div className="flex items-center gap-1 text-[10px] opacity-75">
+                        <Info size={10} />
+                        <span>(Anlagen + Lager + WIP + Forderungen) - Verbindlichkeiten</span>
+                      </div>
+
+                      {showTotalCapitalInfo && (
+                        <div className="absolute left-0 bottom-full mb-2 w-72 p-3 bg-white shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2 text-left rounded-sm">
+                          <h4 className="font-heading font-bold text-slate-800 text-xs mb-1">Zusammensetzung Gesamtkapital</h4>
+                          <div className="space-y-2 text-xs text-slate-600 leading-snug">
+                            <p>
+                              Das gebundene Kapital ("Capital Employed") setzt sich zusammen aus dem langfristigen <span className="font-semibold text-orange-700">Anlagevermögen</span> (Maschinen, Gebäude) und dem kurzfristigen <span className="font-semibold text-orange-500">Working Capital</span>.
+                            </p>
+                            <div className="bg-slate-50 p-2 rounded border border-slate-100 font-mono text-[10px]">
+                              <div className="flex justify-between"><span>Anlagevermögen</span> <span>{formatCurrency(inputs.fixedAssets)}</span></div>
+                              <div className="flex justify-between"><span>+ Lager & WIP</span> <span>{formatCurrency(inputs.inventoryValue + inputs.wip)}</span></div>
+                              <div className="flex justify-between"><span>+ Forderungen</span> <span>{formatCurrency(results.receivables)}</span></div>
+                              <div className="flex justify-between text-red-600"><span>- Verbindlichkeiten</span> <span>- {formatCurrency(results.payables)}</span></div>
+                              <div className="border-t border-slate-300 my-1"></div>
+                              <div className="flex justify-between font-bold"><span>= Gesamtkapital</span> <span>{formatCurrency(results.totalCapital)}</span></div>
+                            </div>
+                            <p className="text-[10px] italic">
+                              HINWEIS: Verbindlichkeiten (Lieferantenkredite) reduzieren das gebundene Kapital, da sie als zinsfreie Finanzierung dienen.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-end">
                       <span className={`font-bold ${results.cash < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
